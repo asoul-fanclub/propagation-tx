@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"propagation-tx/sql"
@@ -15,6 +14,7 @@ import (
 var db, _ = sql.GetSimpleDB("localhost", 3306, "fanchat", "root", "140214mysql", context.Background())
 
 func TestSimpleDB(t *testing.T) {
+	clearData()
 	_ = db.Create(&test.User{
 		Username: "test_username",
 		Password: "test_password",
@@ -29,9 +29,11 @@ func TestSimpleDB(t *testing.T) {
 	_ = db.Delete(test.User{}, "username = ?", "test_username")
 	user = nil
 	assert.Nil(t, user)
+	clearData()
 }
 
 func TestTranslate(t *testing.T) {
+	clearData()
 	fa, err := sql.NewSimpleDBFactory("localhost", 3306, "fanchat", "root", "140214mysql")
 	assert.Nil(t, err)
 	ctx := context.Background()
@@ -61,6 +63,7 @@ func TestTranslate(t *testing.T) {
 	AssertNotExist(t, user1)
 	AssertExist(t, user2)
 	AssertExist(t, user3)
+	clearData()
 }
 
 func AssertNotExist(t *testing.T, user *test.User) {
@@ -73,4 +76,8 @@ func AssertExist(t *testing.T, user *test.User) {
 	var count int64 = 0
 	db.Model(&test.User{}).Where("username = ?", user.Username).Count(&count)
 	assert.Equal(t, int64(1), count)
+}
+
+func clearData() {
+	db.Delete(test.User{}, "1=1")
 }
