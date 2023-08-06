@@ -1,4 +1,4 @@
-package propagation_tx
+package sql
 
 import (
 	"context"
