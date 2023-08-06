@@ -3,17 +3,16 @@ package main
 import (
 	"context"
 	"errors"
+	"testing"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"propagation-tx/sql"
 	"propagation-tx/test"
-	"testing"
 )
 
-var (
-	db, _ = sql.GetSimpleDB("localhost", 3306, "fanchat", "root", "140214mysql", context.Background())
-)
+var db, _ = sql.GetSimpleDB("localhost", 3306, "fanchat", "root", "140214mysql", context.Background())
 
 func TestSimpleDB(t *testing.T) {
 	_ = db.Create(&test.User{
