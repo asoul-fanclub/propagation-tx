@@ -20,3 +20,33 @@ type ConnConfig struct {
 
 var connConfigMap = map[string]ConnConfig{}
 var connConfigLock = sync.RWMutex{}
+
+var DefaultConfig = ConnConfig{
+	Port:               5432,
+	MaxIdleConns:       5,
+	MaxOpenConns:       20,
+	ConnMaxLifetimeSec: 3600,
+	DbLog:              false,
+	Dialect:            "mysql",
+}
+
+func PatchDefaultConfig(config *ConnConfig) {
+	if config.Port == 0 {
+		config.Port = DefaultConfig.Port
+	}
+	if config.MaxIdleConns == 0 {
+		config.MaxIdleConns = DefaultConfig.MaxIdleConns
+	}
+	if config.MaxOpenConns == 0 {
+		config.MaxOpenConns = DefaultConfig.MaxOpenConns
+	}
+	if config.ConnMaxLifetimeSec == 0 {
+		config.ConnMaxLifetimeSec = DefaultConfig.ConnMaxLifetimeSec
+	}
+	if config.Dialect == "" {
+		config.Dialect = DefaultConfig.Dialect
+	}
+	if config.Database == "" {
+		panic("database must be set")
+	}
+}

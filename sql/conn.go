@@ -2,8 +2,12 @@ package sql
 
 import (
 	"context"
+	"fmt"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"log"
 	"strconv"
+	"time"
 )
 
 var cache = dbCache{dbConns: make(map[string]map[string]*gorm.DB)}
@@ -48,6 +52,15 @@ func (s *simpleDBCreator) CacheKey() string {
 
 func (s *simpleDBCreator) CacheSource() string {
 	return "simple_db"
+}
+
+// GetSimpleDB get DB conn with specified context by some simple params
+func GetSimpleDB(host string, port int, database string, user string, password string, ctx context.Context) (*gorm.DB, error) {
+	factory, err := NewSimpleDBFactory(host, port, database, user, password)
+	if err != nil {
+		return nil, err
+	}
+	return factory.GetDB(ctx), nil
 }
 
 // DBFactory get a db object with ctx
@@ -101,5 +114,21 @@ func NewSimpleDBFactory(host string, port int, database string, user string, pas
 }
 
 func createDB(connConfig *ConnConfig) (*gorm.DB, error) {
-	panic("implement me")
+	PatchDefaultConfig(connConfig)
+	log.Println("[DB] create db")
+	connStr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8", connConfig.User, connConfig.Password, connConfig.Host, connConfig.Port, connConfig.Database)
+	// TODO: support other type of db
+	db, err := gorm.Open(mysql.Open(connStr))
+	if err != nil {
+		return nil, err
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalln("get sql db error: ", err)
+	}
+	sqlDB.SetMaxIdleConns(connConfig.MaxIdleConns)                                       // 打开空闲连接数
+	sqlDB.SetMaxOpenConns(connConfig.MaxOpenConns)                                       // 最大打开连接数
+	sqlDB.SetConnMaxLifetime(time.Duration(connConfig.ConnMaxLifetimeSec) * time.Second) // 连接可重用的最大时间长度，默认可一直复用
+	// TODO: log
+	return db, nil
 }
