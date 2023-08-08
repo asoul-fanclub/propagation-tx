@@ -25,6 +25,23 @@ type CacheableDBCreator interface {
 	CacheSource() string
 }
 
+// configDBCreator create db by config
+type configDBCreator struct {
+	config *ConnConfig
+}
+
+func (c *configDBCreator) CreateDB() (*gorm.DB, error) {
+	return createDB(c.config)
+}
+
+func (c *configDBCreator) CacheKey() string {
+	return c.config.Host + "#" + strconv.Itoa(c.config.Port) + "#" + c.config.Database
+}
+
+func (c *configDBCreator) CacheSource() string {
+	return "config_db"
+}
+
 // simpleDBCreator create db by simple params
 type simpleDBCreator struct {
 	host     string
@@ -57,6 +74,15 @@ func (s *simpleDBCreator) CacheSource() string {
 // GetSimpleDB get DB conn with specified context by some simple params
 func GetSimpleDB(host string, port int, database string, user string, password string, ctx context.Context) (*gorm.DB, error) {
 	factory, err := NewSimpleDBFactory(host, port, database, user, password)
+	if err != nil {
+		return nil, err
+	}
+	return factory.GetDB(ctx), nil
+}
+
+// GetConfigDB get DB conn with specified context by connConfig
+func GetConfigDB(connConfig *ConnConfig, ctx context.Context) (*gorm.DB, error) {
+	factory, err := NewConfigDBFactory(connConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +139,10 @@ func NewSimpleDBFactory(host string, port int, database string, user string, pas
 		})
 }
 
+func NewConfigDBFactory(connConfig *ConnConfig) (DBFactory, error) {
+	return NewCachedDBFactory(&configDBCreator{config: connConfig})
+}
+
 func createDB(connConfig *ConnConfig) (*gorm.DB, error) {
 	PatchDefaultConfig(connConfig)
 	log.Println("[DB] create db")
@@ -130,5 +160,9 @@ func createDB(connConfig *ConnConfig) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(connConfig.MaxOpenConns)                                       // 最大打开连接数
 	sqlDB.SetConnMaxLifetime(time.Duration(connConfig.ConnMaxLifetimeSec) * time.Second) // 连接可重用的最大时间长度，默认可一直复用
 	// TODO: log
+
+	// TODO：relevant metrics collection
+
+	// TODO: trace
 	return db, nil
 }
