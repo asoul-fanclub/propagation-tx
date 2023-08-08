@@ -48,24 +48,6 @@ func TestSimpleDB(t *testing.T) {
 	clearData()
 }
 
-func DefaultTransactionTest(name string, t *testing.T, testFn func(), checkFn func(t *testing.T)) {
-	TransactionTest(name, t, func() { clearData() }, func() { clearData() }, testFn, checkFn)
-}
-
-func TransactionTest(name string, t *testing.T, initFn func(), cleanFn func(), testFn func(), checkFn func(t *testing.T)) {
-	t.Run(name, func(t *testing.T) {
-		initFn()
-		defer cleanFn()
-		defer func() {
-			if r := recover(); r != nil {
-				t.Logf("test: [%v] catch panic: %v", name, r)
-			}
-		}()
-		testFn()
-		checkFn(t)
-	})
-}
-
 func TestTransactionManager_Transaction_PropagationRequiresNew(t *testing.T) {
 	DefaultTransactionTest("test-user1-rollback", t, func() {
 		ctx := context.Background()
@@ -89,6 +71,24 @@ func TestTransactionManager_Transaction_PropagationRequiresNew(t *testing.T) {
 		AssertNotExist(t, user1)
 		AssertExist(t, user2)
 		AssertExist(t, user3)
+	})
+}
+
+func DefaultTransactionTest(name string, t *testing.T, testFn func(), checkFn func(t *testing.T)) {
+	TransactionTest(name, t, func() { clearData() }, func() { clearData() }, testFn, checkFn)
+}
+
+func TransactionTest(name string, t *testing.T, initFn func(), cleanFn func(), testFn func(), checkFn func(t *testing.T)) {
+	t.Run(name, func(t *testing.T) {
+		initFn()
+		defer cleanFn()
+		defer func() {
+			if r := recover(); r != nil {
+				t.Logf("test: [%v] catch panic: %v", name, r)
+			}
+		}()
+		testFn()
+		checkFn(t)
 	})
 }
 
