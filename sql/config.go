@@ -1,7 +1,5 @@
 package sql
 
-import "sync"
-
 const DefaultGroup = "DEFAULT"
 
 // ConnConfig is config for connected to db
@@ -17,9 +15,6 @@ type ConnConfig struct {
 	DbLog              bool   `json:"dbLog"`
 	Dialect            string `json:"dialect"`
 }
-
-var connConfigMap = map[string]ConnConfig{}
-var connConfigLock = sync.RWMutex{}
 
 var DefaultConfig = ConnConfig{
 	Port:               5432,
