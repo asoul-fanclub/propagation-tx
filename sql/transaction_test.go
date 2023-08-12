@@ -17,6 +17,7 @@ var (
 	mockErr                            = errors.New("mock error")
 	mockPanic                          = func() { panic("mock panic") }
 	errMandatoryPropWithoutTransaction = errors.New("mandatory propagation must in transaction")
+	errNeverPropInTransaction          = errors.New("never propagation must not in transaction")
 )
 
 var (
@@ -366,7 +367,7 @@ func TestTransactionManager__Transaction_PropagationMandatory(t *testing.T) {
 }
 
 func TestTransactionManager_Transaction_PropagationRequiresNew(t *testing.T) {
-	DefaultTransactionTest("test-user1-rollback", t, func() {
+	DefaultTransactionTest("test-user2-rollback", t, func() {
 		ctx := context.Background()
 		_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
 			tx.Create(user1)
@@ -392,7 +393,7 @@ func TestTransactionManager_Transaction_PropagationRequiresNew(t *testing.T) {
 }
 
 func TestTransactionManager_Transaction_PropagationNotSupported(t *testing.T) {
-	DefaultTransactionTest("test-user1-rollback", t, func() {
+	DefaultTransactionTest("test-create-success", t, func() {
 		ctx := context.Background()
 		_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
 			tx.Create(user1)
@@ -414,6 +415,113 @@ func TestTransactionManager_Transaction_PropagationNotSupported(t *testing.T) {
 		AssertExist(t, user1)
 		AssertExist(t, user2)
 		AssertExist(t, user3)
+	})
+}
+
+func TestTransactionManager_Transaction_PropagationNested(t *testing.T) {
+	DefaultTransactionTest("test-all-rollback", t, func() {
+		ctx := context.Background()
+		_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+			tx.Create(user1)
+
+			_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+				tx.Create(user2)
+				return nil
+			}, PropagationNested)
+
+			_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+				tx.Create(user3)
+				return nil
+			}, PropagationNested)
+
+			mockPanic()
+			return nil
+		}, PropagationRequired)
+	}, func(t *testing.T) {
+		AssertNotExist(t, user1)
+		AssertNotExist(t, user2)
+		AssertNotExist(t, user3)
+	})
+
+	DefaultTransactionTest("test-commit-together", t, func() {
+		ctx := context.Background()
+		_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+			tx.Create(user1)
+
+			_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+				tx.Create(user2)
+				return nil
+			}, PropagationNested)
+
+			_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+				tx.Create(user3)
+				return nil
+			}, PropagationNested)
+
+			AssertNotExist(t, user2)
+			AssertNotExist(t, user3)
+			return nil
+		}, PropagationRequired)
+	}, func(t *testing.T) {
+		AssertExist(t, user1)
+		AssertExist(t, user2)
+		AssertExist(t, user3)
+	})
+
+	DefaultTransactionTest("test-commit-together", t, func() {
+		ctx := context.Background()
+		_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+			tx.Create(user1)
+
+			_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+				tx.Create(user2)
+				mockPanic()
+				return nil
+			}, PropagationNested)
+
+			_ = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+				tx.Create(user3)
+				return nil
+			}, PropagationNested)
+
+			AssertNotExist(t, user2)
+			AssertNotExist(t, user3)
+			return nil
+		}, PropagationRequired)
+	}, func(t *testing.T) {
+		AssertExist(t, user1)
+		AssertNotExist(t, user2)
+		AssertExist(t, user3)
+	})
+}
+
+func TestTransactionManager_Transaction_PropagationNever(t *testing.T) {
+	var err error
+	DefaultTransactionTest("test-not-transaction-success", t, func() {
+		ctx := context.Background()
+		err = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+			tx.Create(user1)
+			return nil
+		}, PropagationNever)
+	}, func(t *testing.T) {
+		AssertExist(t, user1)
+		assert.Nil(t, err)
+	})
+
+	err = nil
+	DefaultTransactionTest("test-transaction-error", t, func() {
+		ctx := context.Background()
+		err = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+			tx.Create(user1)
+			return tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+				tx.Create(user2)
+				return nil
+			}, PropagationNever)
+		}, PropagationRequired)
+	}, func(t *testing.T) {
+		AssertNotExist(t, user1)
+		AssertExist(t, user2)
+		AssertErrorsIsEqual(t, err, errNeverPropInTransaction)
 	})
 }
 
