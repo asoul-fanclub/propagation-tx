@@ -514,13 +514,14 @@ func TestTransactionManager_Transaction_PropagationNever(t *testing.T) {
 		err = tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
 			tx.Create(user1)
 			return tm.Transaction(ctx, func(ctx context.Context, tx *gorm.DB) error {
+				// directly return error and not execute the following code
 				tx.Create(user2)
 				return nil
 			}, PropagationNever)
 		}, PropagationRequired)
 	}, func(t *testing.T) {
 		AssertNotExist(t, user1)
-		AssertExist(t, user2)
+		AssertNotExist(t, user2)
 		AssertErrorsIsEqual(t, err, errNeverPropInTransaction)
 	})
 }
