@@ -3,11 +3,9 @@ package sql
 import (
 	"context"
 	"errors"
-	"testing"
-	"time"
-
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+	"testing"
 )
 
 var (
@@ -21,16 +19,15 @@ var (
 )
 
 var (
-	user1 = &User{Username: "test_user_1", CreateTime: time.Now()}
-	user2 = &User{Username: "test_user_2", CreateTime: time.Now()}
-	user3 = &User{Username: "test_user_3", CreateTime: time.Now()}
-	user4 = &User{Username: "test_user_4", CreateTime: time.Now()}
+	user1 = &User{Username: "test_user_1"}
+	user2 = &User{Username: "test_user_2"}
+	user3 = &User{Username: "test_user_3"}
+	user4 = &User{Username: "test_user_4"}
 )
 
 type User struct {
-	Id         int32     `gorm:"column:id;type:int;not null;primaryKey;autoIncrement"`
-	Username   string    `gorm:"column:username;type:varchar(255);not null"`
-	CreateTime time.Time `gorm:"column:create_time;type:datetime;not null"`
+	Id       int32  `gorm:"column:id;type:int;not null;primaryKey;autoIncrement"`
+	Username string `gorm:"column:username;type:varchar(255);not null"`
 }
 
 func (user *User) TableName() string {
