@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	db, _                              = GetSimpleDB("localhost", 3306, "fanchat", "root", "140214mysql", context.Background())
-	factory, _                         = NewSimpleDBFactory("localhost", 3306, "fanchat", "root", "140214mysql")
+	db, _                              = GetSimpleDB("localhost", 3306, "pt", "root", "123456", context.Background())
+	factory, _                         = NewSimpleDBFactory("localhost", 3306, "pt", "root", "123456")
 	tm                                 = NewTransactionManager(factory)
 	mockErr                            = errors.New("mock error")
 	mockPanic                          = func() { panic("mock panic") }
@@ -26,8 +26,8 @@ var (
 )
 
 type User struct {
-	Id       int32  `gorm:"column:id;type:int;not null;primaryKey;autoIncrement"`
-	Username string `gorm:"column:username;type:varchar(255);not null"`
+	Id       int32  `gorm:"column:id;type:int;not null;primaryKey;autoIncrement" json:"id,omitempty"`
+	Username string `gorm:"column:username;type:varchar(255);not null" json:"username,omitempty"`
 }
 
 func (user *User) TableName() string {
@@ -43,7 +43,8 @@ func TestSimpleDB(t *testing.T) {
 	assert.Equal(t, user1.Username, user.Username)
 	_ = db.Delete(User{}, "username = ?", user1.Username)
 	user = nil
-	assert.Nil(t, user)
+	_ = db.Find(&user, "username = ?", user1.Username)
+	assert.Equal(t, "", user.Username)
 	clearData()
 }
 
